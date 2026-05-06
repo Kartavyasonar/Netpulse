@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: netpulse
+      POSTGRES_PASSWORD: netpulse_pass
+      POSTGRES_DB: netpulse
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netpulse"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build: ./backend
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://netpulse:netpulse_pass@db:5432/netpulse
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    cap_add:
+      - NET_RAW        # Required for ICMP raw sockets
+      - NET_ADMIN      # Required for ARP/route access
+    network_mode: host  # Needed for ARP table access (or use: networks: host)
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata:

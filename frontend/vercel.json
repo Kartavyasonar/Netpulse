@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/" }
+  ],
+  "env": {
+    "VITE_API_URL": "https://your-backend-domain.com"
+  }
+}

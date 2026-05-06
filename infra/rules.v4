@@ -1,0 +1,64 @@
+# /etc/iptables/rules.v4
+# NetPulse ICMP rate-limiting rules
+# Applied automatically by netpulse on startup, persisted here for reboots.
+#
+# TECHNICAL EXPLANATION:
+#   --hashlimit creates a per-source-IP token bucket in kernel space.
+#   Each source IP gets its own bucket: refills at 10 tokens/sec, max burst 20.
+#   When bucket empties, further ICMP echo-requests from that IP are DROPPED.
+#
+#   This prevents NetPulse from being used as an ICMP reflection amplifier:
+#   An attacker spoofing source IPs could send ICMP to NetPulse's prober,
+#   causing it to flood targets with replies. hashlimit stops this.
+#
+# Install:
+#   sudo cp rules.v4 /etc/iptables/rules.v4
+#   sudo apt install iptables-persistent
+#   sudo netfilter-persistent save
+
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT ACCEPT [0:0]
+
+# Allow established connections
+-A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+
+# Allow loopback
+-A INPUT -i lo -j ACCEPT
+
+# SSH (rate-limited to prevent brute force)
+-A INPUT -p tcp --dport 22 -m state --state NEW -m limit --limit 3/min --limit-burst 5 -j ACCEPT
+
+# HTTP/HTTPS
+-A INPUT -p tcp --dport 80 -j ACCEPT
+-A INPUT -p tcp --dport 443 -j ACCEPT
+
+# NetPulse API
+-A INPUT -p tcp --dport 8000 -j ACCEPT
+
+# NetPulse log receiver (TCP syslog from probe nodes)
+-A INPUT -p tcp --dport 9020 -j ACCEPT
+
+# ICMP ping (allow, but rate-limit per source IP using hashlimit)
+# --hashlimit-upto 10/sec: allow up to 10 ICMP echo-requests/sec per source IP
+# --hashlimit-burst 20: allow short bursts up to 20 packets
+# --hashlimit-mode srcip: track per source IP (not per connection)
+-A INPUT -p icmp --icmp-type echo-request \
+  -m hashlimit \
+  --hashlimit-name icmp_limit \
+  --hashlimit-upto 10/sec \
+  --hashlimit-burst 20 \
+  --hashlimit-mode srcip \
+  -j ACCEPT
+
+# DROP ICMP echo-requests exceeding the rate limit
+-A INPUT -p icmp --icmp-type echo-request -j DROP
+
+# Allow ICMP echo-reply (we need this for our own probes to work)
+-A INPUT -p icmp --icmp-type echo-reply -j ACCEPT
+
+# DROP everything else
+-A INPUT -j DROP
+
+COMMIT

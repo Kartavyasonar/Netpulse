@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #0a0e1a;
+    color: #e2e8f0;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #1e2d4a #0a0e1a;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+  }
+  *::-webkit-scrollbar-track {
+    background: #0a0e1a;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: #1e2d4a;
+    border-radius: 3px;
+  }
+}
+
+@layer components {
+  .noc-panel {
+    @apply bg-[#0f1629] border border-[#1e2d4a] rounded-lg p-4;
+  }
+
+  .status-up {
+    @apply text-[#00ff88];
+  }
+  .status-down {
+    @apply text-[#ff4444];
+  }
+  .status-degraded {
+    @apply text-[#ffaa00];
+  }
+  .status-unknown {
+    @apply text-gray-500;
+  }
+
+  .pulse-green {
+    animation: pulseGreen 2s infinite;
+  }
+  .pulse-red {
+    animation: pulseRed 1s infinite;
+  }
+
+  @keyframes pulseGreen {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(0, 255, 136, 0); }
+  }
+  @keyframes pulseRed {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(255, 68, 68, 0); }
+  }
+}
